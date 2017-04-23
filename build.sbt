@@ -1,3 +1,4 @@
+import chrome.permissions.Permission
 import chrome.{Background, BrowserAction, ExtensionManifest}
 import net.lullabyte.Chrome
 
@@ -32,6 +33,45 @@ scalacOptions ++= Seq(
 persistLauncher := true
 persistLauncher in Test := false
 
+//TODO: contribute to plugin
+val mainFileName = "main.js"
+val dependenciesFileName = "dependencies.js"
+val launcherFileName = "launcher.js"
+val defaultScripts = List(dependenciesFileName, mainFileName, launcherFileName)
+
+def buildUnpackedDirectory(
+  unpacked: File
+)(
+  manifest: File,
+  jsLib: File,
+  jsDeps: File,
+  jsLauncher: File,
+  resources: Seq[File]
+): File =  {
+  IO.createDirectory(unpacked)
+  resources.foreach { resource =>
+    IO.copyDirectory(resource, unpacked, overwrite = true, preserveLastModified = true)
+  }
+  IO.copy(List(
+    (jsLib, unpacked / mainFileName),
+    (new File(s"${jsLib.toString}.map"), unpacked / s"${jsLib.toPath.getFileName.toString}.map"),
+    (jsDeps, unpacked / dependenciesFileName),
+    (jsLauncher, unpacked / launcherFileName),
+    (manifest, unpacked / "manifest.json")
+  ), overwrite = true, preserveLastModified = true)
+  unpacked
+}
+
+chromeUnpackedFast := {
+  buildUnpackedDirectory(target.value / "chrome" / "unpacked-fast")(
+    (chromeGenerateManifest in Compile).value,
+    (fastOptJS in Compile).value.data,
+    (packageJSDependencies in Compile).value,
+    (packageScalaJSLauncher in Compile).value.data,
+    (resourceDirectories in Compile).value
+  )
+}
+
 chromeManifest := new ExtensionManifest {
   val name = Keys.name.value
   val version = VersionNumber(Keys.version.value).numbers.mkString(".")
@@ -50,6 +90,11 @@ chromeManifest := new ExtensionManifest {
 
   val background = Background(
     scripts = Chrome.defaultScripts
+  )
+
+  override val permissions: Set[Permission] = Set(
+    Permission.API.Idle,
+    Permission.API.Background
   )
 
 }

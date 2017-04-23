@@ -3,6 +3,7 @@ package eyesy.timer
 import eyesy.{LongBreakSettings, Settings}
 
 import scala.concurrent.{Future, Promise}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 sealed trait TimerState {
 
@@ -12,7 +13,10 @@ sealed trait TimerState {
   protected[timer] val newState: Future[TimerState] = newStatePromise.future
 }
 
-sealed trait PausableTimerState extends TimerState
+sealed trait PausableTimerState { self: TimerState => }
+sealed trait StoppableTimerState { self: TimerState =>
+  def stop(): Unit
+}
 
 object TimerState {
 
@@ -26,11 +30,12 @@ object TimerState {
     }
   }
 
-  case class Work()(implicit val context: Context) extends PausableTimerState {
+  case class Work(workDuration: Option[Ticks] = None)(implicit val context: Context)
+    extends TimerState with PausableTimerState with StoppableTimerState {
 
     context.clock.start()
 
-    private var remainingTime: Ticks = context.settings.workTime
+    private var remainingTime: Ticks = workDuration.getOrElse(context.settings.workTime)
 
     context.clock.onTick { () =>
       remainingTime -= Ticks.single
@@ -44,8 +49,8 @@ object TimerState {
       newStatePromise.success(Stop())
     }
 
-    def pause(): Unit = {
-      newStatePromise.success(Pause(this))
+    def pause(reason: Pause.Reason): Unit = {
+      newStatePromise.success(Pause(reason, Work(Some(remainingTime))))
     }
 
     def restart(): Unit = {
@@ -58,36 +63,75 @@ object TimerState {
     }
   }
 
-  case class Break(breakDuration: Ticks)(implicit val context: Context) extends PausableTimerState {
+  case class Break(
+    breakDuration: Ticks, confirmation: Option[Future[Unit]] = None
+  )(implicit val context: Context) extends TimerState with PausableTimerState with StoppableTimerState {
 
     context.clock.start()
 
     private var remainingTime: Ticks = breakDuration
 
+    private def finish() = {
+      context.breakFinished()
+      newStatePromise.success(Work())
+    }
+
     context.clock.onTick { () =>
       remainingTime -= Ticks.single
 
       if (remainingTime.negativeOrZero) {
-        context.breakFinished()
-        newStatePromise.success(Work())
+        confirmation match {
+          case Some(confirm) =>
+            stateVar = Break.State.WaitingConfirmation
+            confirm.foreach { _ =>
+              finish()
+            }
+          case None => finish()
+        }
       }
     }
+
+    private var stateVar: Break.State = Break.State.Ticking
+
+    def state: Break.State = stateVar
 
     def stop(): Unit = {
       newStatePromise.success(Stop())
     }
 
     def pause(): Unit = {
-      newStatePromise.success(Pause(this))
+      newStatePromise.success(Pause(Pause.Reason.Manual, Break(remainingTime, confirmation)))
     }
 
     def restart(): Unit = {
       context.restart()
       newStatePromise.success(Work())
     }
+
+    def withConfirmation(confirm: Future[Unit]): Unit = {
+      if (confirmation.isEmpty) {
+        newStatePromise.success(Break(remainingTime, Some(confirm)))
+      }
+    }
+
+    def withoutConfirmation(): Unit = {
+      if (confirmation.nonEmpty) {
+        newStatePromise.success(Break(remainingTime))
+      }
+    }
   }
 
-  case class Pause(previousState: PausableTimerState)(implicit val context: Context) extends TimerState {
+  object Break {
+    sealed trait State
+    object State {
+      case object Ticking extends State
+      case object WaitingConfirmation extends State
+    }
+  }
+
+  case class Pause(
+    reason: Pause.Reason, previousState: TimerState with PausableTimerState
+  )(implicit val context: Context) extends TimerState with StoppableTimerState {
 
     context.clock.stop()
 
@@ -103,6 +147,14 @@ object TimerState {
     def restart(): Unit = {
       context.restart()
       newStatePromise.success(Work())
+    }
+  }
+
+  object Pause {
+    sealed trait Reason
+    object Reason{
+      case object Idle extends Reason
+      case object Manual extends Reason
     }
   }
 

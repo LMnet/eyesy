@@ -14,15 +14,16 @@ object Main extends JSApp with LazyLogging {
     LoggerConfig.level = LogLevel.TRACE
 
     val settings = Settings(
-      workTime = Ticks(15),
+      workTime = Ticks(40),
       breakTime = Ticks(5),
       longBreak = LongBreakSettings.Off,
-      postponeTime = Ticks(5)
+      postponeTime = Ticks(5),
+      idleChecking = IdleCheckingSettings.Off
     )
     val clock = Clock()
 
     val timer = new EyesyTimer(settings, clock)
-    timer.onStateChanged { state =>
+    timer.listen { state =>
       logger.debug(state.toString)
     }
     timer.currentState match {
