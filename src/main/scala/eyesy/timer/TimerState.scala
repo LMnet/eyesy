@@ -164,12 +164,12 @@ object TimerState {
 
     def breakFinished(): Unit = {
       settings.longBreak match {
-        case LongBreakSettings.On(breakAmountBeforeLongBreak, _) =>
+        case LongBreakSettings(true, breakAmountBeforeLongBreak, _) =>
           breaksAlreadyFinished += 1
           if (breaksAlreadyFinished > breakAmountBeforeLongBreak) {
             breaksAlreadyFinished = 0
           }
-        case LongBreakSettings.Off =>
+        case _ =>
       }
     }
 
@@ -179,13 +179,13 @@ object TimerState {
 
     def nextBreakDuration: Ticks = {
       settings.longBreak match {
-        case LongBreakSettings.On(breakAmountBeforeLongBreak, longBreakTime) =>
+        case LongBreakSettings(true, breakAmountBeforeLongBreak, longBreakTime) =>
           if (breakAmountBeforeLongBreak >= breaksAlreadyFinished) {
             longBreakTime
           } else {
             settings.breakTime
           }
-        case LongBreakSettings.Off =>
+        case _ =>
           settings.breakTime
       }
     }

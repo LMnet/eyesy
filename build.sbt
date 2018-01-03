@@ -6,13 +6,6 @@ description := "Simple chrome extension to help your eyes"
 
 scalaVersion := "2.12.4"
 
-enablePlugins(ScalaJSPlugin)
-
-libraryDependencies ++= Seq(
-  "biz.enef" %%% "slogging" % "0.6.0",
-  "net.lullabyte" %%% "scala-js-chrome" % "0.5.0"
-)
-
 scalacOptions ++= Seq(
   "-deprecation",
   "-encoding", "UTF-8",
@@ -25,6 +18,24 @@ scalacOptions ++= Seq(
   "-Ywarn-numeric-widen",
   "-Xlint:missing-interpolator"
 )
+
+enablePlugins(ScalaJSPlugin)
+
+val circeVersion = "0.9.0"
+val scalaJsPreactVersion = "0.2.2-SNAPSHOT"
+
+libraryDependencies ++= Seq(
+  "biz.enef" %%% "slogging" % "0.6.0",
+  "net.lullabyte" %%% "scala-js-chrome" % "0.5.0",
+  "com.github.lmnet" %%% "scala-js-preact-core" % scalaJsPreactVersion,
+  "com.github.lmnet" %%% "scala-js-preact-dsl-tags" % scalaJsPreactVersion,
+  "io.circe" %%% "circe-core" % circeVersion,
+  "io.circe" %%% "circe-generic" % circeVersion,
+  "io.circe" %%% "circe-parser" % circeVersion
+)
+
+addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M10" cross CrossVersion.full)
+scalacOptions += "-P:scalajs:sjsDefinedByDefault"
 
 scalaJSUseMainModuleInitializer := true
 

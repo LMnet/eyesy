@@ -15,10 +15,8 @@ sealed trait IdleChecker {
 object IdleChecker {
 
   def apply(settings: IdleCheckingSettings): IdleChecker = {
-    settings match {
-      case IdleCheckingSettings.Off => new NoOpIdleChecker
-      case s: IdleCheckingSettings.On => new IdleCheckerImpl(s)
-    }
+    if (settings.enabled) new NoOpIdleChecker
+    else new IdleCheckerImpl(settings.pauseAfter, settings.stopOnSystemLocked)
   }
 
   private class NoOpIdleChecker extends IdleChecker {
@@ -34,14 +32,14 @@ object IdleChecker {
     def handleNewIdleState(idleState: State, timerState: TimerState): Unit = ()
   }
 
-  private class IdleCheckerImpl(settings: IdleCheckingSettings.On) extends IdleChecker {
+  private class IdleCheckerImpl(pauseAfter: Ticks, stopOnSystemLocked: Boolean) extends IdleChecker {
 
     import chrome.idle.{Idle => ChromeIdle}
     import chrome.idle.bindings.{State => IdleState}
 
     // Ticks and real seconds are not correspond to each other,
     // but in real runtime 1 tick always will be 1 second
-    ChromeIdle.setDetectionInterval(settings.pauseAfter.value)
+    ChromeIdle.setDetectionInterval(pauseAfter.value)
 
     val onStateChanged: EventSource[State] = ChromeIdle.onStateChanged
 
@@ -58,7 +56,7 @@ object IdleChecker {
           case _ =>
         }
         case IdleState.LOCKED => timerState match {
-          case stoppable: StoppableTimerState if settings.stopOnSystemLocked => stoppable.stop()
+          case stoppable: StoppableTimerState if stopOnSystemLocked => stoppable.stop()
           case _ =>
         }
       }
