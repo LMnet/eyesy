@@ -3,9 +3,7 @@ package eyesy
 import eyesy.timer.{Clock, EyesyTimer, Ticks}
 import slogging.{ConsoleLoggerFactory, LazyLogging, LogLevel, LoggerConfig}
 
-import scala.scalajs.js.JSApp
-
-object Main extends JSApp with LazyLogging {
+object Main extends App with LazyLogging {
 
   import eyesy.timer.TimerState._
 
