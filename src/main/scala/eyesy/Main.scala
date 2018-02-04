@@ -1,7 +1,7 @@
 package eyesy
 
 import eyesy.timer.Clock
-import eyesy.ui.SettingsPage
+import eyesy.ui.AppContainer
 import org.scalajs.dom
 import preact.Preact
 import slogging.{ConsoleLoggerFactory, LazyLogging, LogLevel, LoggerConfig}
@@ -16,8 +16,8 @@ object Main extends LazyLogging {
     val settingsStorage = new BrowserLocalStorageSettingsStorage()(clock.singleTickDuration)
 
     val appDiv = dom.document.getElementById("app")
-    val page = SettingsPage(settingsStorage, clock.singleTickDuration)
-    Preact.render(page, appDiv)
+    val app = AppContainer(settingsStorage, clock.singleTickDuration)
+    Preact.render(app, appDiv)
 
 //    val timer = new EyesyTimer(settings, clock)
 //    timer.listen { state =>
