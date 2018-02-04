@@ -40,25 +40,28 @@ class AppContainer(initialProps: AppContainer.Props) {
     initialProps.settingsStorage.load().onComplete { res =>
       setState(state.copy(settings = Some(res)))
     }
-    State(Page.Settings, None)
+    State(Page.Timer, None)
   }
 
   def render(): VNode = {
     import preact.dsl.tags._
 
-    section(`class` := "section",
-      state.settings match {
-        case Some(Success(settings)) =>
-          SettingsPage(settings, onSave = { settings =>
-            props.settingsStorage.save(settings)
-          })
+    div(state.settings match {
+      case Some(Success(settings)) =>
+        state.currentPage match {
+          case Page.Settings => SettingsPage(settings, onSave = { settings =>
+              props.settingsStorage.save(settings)
+            })
 
-        case Some(Failure(e)) =>
-          div(s"Something wrong: $e") // TODO
+          case Page.Timer => TimerPage(settings)
+        }
 
-        case None =>
-          div("Loading...") // TODO
-      }
-    )
+
+      case Some(Failure(e)) =>
+        div(s"Something wrong: $e") // TODO
+
+      case None =>
+        div("Loading...") // TODO
+    })
   }
 }

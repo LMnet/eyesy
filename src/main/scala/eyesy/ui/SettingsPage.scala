@@ -45,7 +45,7 @@ class SettingsPage(initialProps: SettingsPage.Props) {
   def render(): VNode = {
     import preact.dsl.tags._
 
-    div(Entry.Children(Seq(
+    section(`class` := "section", Entry.Children(Seq(
       h1(`class` := "title", "Settings"), // TODO: styles
       TicksInput("Work time", state.settings.workTime, {
         case Right(ticks) => setState(state.copy(
